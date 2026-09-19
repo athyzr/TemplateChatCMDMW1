@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CM Broadcast Generator</title>
+  <style>
+    :root { color-scheme: light; --ink: #17212b; --muted: #64707d; --line: #d8dee5; --accent: #1264a3; --soft: #eef6fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f7f9; color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
+    main { width: min(1080px, calc(100% - 32px)); margin: 34px auto 64px; }
+    header { margin-bottom: 24px; }
+    h1 { margin: 0 0 6px; font-size: clamp(26px, 4vw, 38px); }
+    h2 { margin: 34px 0 12px; font-size: 22px; }
+    p { color: var(--muted); }
+    label { display: block; margin: 14px 0 7px; font-weight: 650; }
+    textarea, input { width: 100%; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); padding: 12px; font: inherit; }
+    #raw-table { min-height: 220px; resize: vertical; }
+    input { max-width: 480px; }
+    button { border: 0; border-radius: 7px; padding: 11px 17px; background: var(--accent); color: white; cursor: pointer; font: inherit; font-weight: 700; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .generate { margin-top: 16px; }
+    .notice { margin-top: 16px; padding: 12px 14px; border-radius: 7px; background: var(--soft); color: #24516d; }
+    .error { background: #fff0f0; color: #a32626; }
+    .result { position: relative; margin: 10px 0 18px; }
+    .result textarea { min-height: 230px; padding-right: 52px; resize: vertical; }
+    .copy { position: absolute; top: 8px; right: 8px; padding: 7px 9px; background: white; color: var(--ink); border: 1px solid var(--line); font-size: 17px; }
+    .copy:hover { background: #eef2f5; }
+    .meta { margin: 0 0 6px; color: var(--muted); font-size: 13px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>CM Broadcast Generator</h1>
+      <p>Paste tabel jadwal, generate broadcast, lalu copy dengan satu klik.</p>
+    </header>
+    <section>
+      <label for="raw-table">Tabel jadwal pekan ini</label>
+      <textarea id="raw-table" placeholder="Paste tabel dari Google Sheets, Excel, atau Markdown..."></textarea>
+      <label for="batch-name">Nama kelas/batch (opsional)</label>
+      <input id="batch-name" placeholder="mis. Digital Marketing Wave 1">
+      <button class="generate" id="generate">Generate Broadcast</button>
+      <div id="status" class="notice hidden"></div>
+    </section>
+    <section id="results" class="hidden">
+      <h2>Hasil Broadcast</h2>
+      <div id="broadcast-list"></div>
+      <h2>Copy All</h2>
+      <div id="all-result"></div>
+    </section>
+  </main>
+  <script>
+    const generate = document.querySelector('#generate');
+    const status = document.querySelector('#status');
+    const results = document.querySelector('#results');
+    const list = document.querySelector('#broadcast-list');
+    const allResult = document.querySelector('#all-result');
+
+    function showStatus(message, error = false) {
+      status.textContent = message;
+      status.classList.toggle('error', error);
+      status.classList.remove('hidden');
+    }
+
+    function makeCopyBox(text, title) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'result';
+      const meta = document.createElement('p');
+      meta.className = 'meta';
+      meta.textContent = title;
+      const textarea = document.createElement('textarea');
+      textarea.readOnly = true;
+      textarea.value = text;
+      const copy = document.createElement('button');
+      copy.className = 'copy';
+      copy.title = 'Copy ke clipboard';
+      copy.setAttribute('aria-label', 'Copy ke clipboard');
+      copy.textContent = '📋';
+      copy.onclick = async () => {
+        await navigator.clipboard.writeText(text);
+        copy.textContent = '✓';
+        setTimeout(() => copy.textContent = '📋', 1200);
+      };
+      wrapper.append(meta, textarea, copy);
+      return wrapper;
+    }
+
+    generate.onclick = async () => {
+      generate.disabled = true;
+      showStatus('Sedang membuat broadcast...');
+      try {
+        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value }) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Input belum dapat diproses.');
+        list.replaceChildren();
+        const all = [];
+        data.broadcasts.forEach(item => { list.append(makeCopyBox(item.text, `${item.type} • ${item.title}`)); all.push(item.text); });
+        allResult.replaceChildren(makeCopyBox(all.join('\n\n---\n\n'), 'Semua broadcast'));
+        results.classList.remove('hidden');
+        showStatus(`${data.broadcasts.length} broadcast berhasil dibuat.`);
+      } catch (error) { showStatus(error.message, true); }
+      finally { generate.disabled = false; }
+    };
+  </script>
+</body>
+</html>
