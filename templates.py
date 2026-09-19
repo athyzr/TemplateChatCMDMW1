@@ -28,8 +28,7 @@ def render_mentor_broadcast(mentor_name: str, status: str, sessions: List[Parsed
 
     parts = [
         f"Halo {mentor_name} 👋",
-        f"Saya Athiya, selaku CM{cm_label}.",
-        "Izin menginformasikan jadwal kelas {mentor_name} untuk pekan ini yaa, berikut detailnya :",
+        f"Izin menginformasikan jadwal kelas {mentor_name} untuk pekan ini yaa, berikut detailnya :",
         "",
     ]
 
@@ -58,9 +57,11 @@ def render_student_broadcast(sessions: List[ParsedSession], batch_name: str = ""
     sessions = sorted(sessions, key=sort_key)
 
     parts = [
-        "Halo, teman-teman! 👋",
-        "Berikut jadwal pembelajaran untuk pekan ini:",
-        "",
+        "📚 KELAS PEKAN INI",
+        ""
+        "Halo, teman-teman! 👋"
+        "Berikut jadwal kelas dan kegiatan kita untuk pekan ini. Jangan lupa dicatat dan dipersiapkan, yaa! ✨"
+
     ]
 
     for s in sessions:
@@ -130,8 +131,22 @@ def render_mentor_daily_broadcast(session: ParsedSession) -> str:
 
 
 def sessions_for_date(sessions: List[ParsedSession], target_date: datetime.date | None = None) -> List[ParsedSession]:
-    target_date = target_date or datetime.date.today()
-    return sorted(
-        [session for session in sessions if session.sort_date == target_date],
-        key=sort_key,
-    )
+    # Jika target_date tidak diberikan, gunakan tanggal hari ini waktu Indonesia (WIB / UTC+7)
+    if target_date is None:
+        tz_wib = datetime.timezone(datetime.timedelta(hours=7))
+        target_date = datetime.datetime.now(tz_wib).date()
+    
+    matched = [session for session in sessions if session.sort_date == target_date]
+
+    # JIKA TIDAK ADA JADWAL HARI INI:
+    # Otomatis ambil sesi hari pertama/terdekat yang ada di tabel agar template "Hari Ini" tetap ter-generate
+    if not matched and sessions:
+        valid_sessions = [s for s in sessions if s.sort_date is not None]
+        if valid_sessions:
+            first_date = sorted(valid_sessions, key=sort_key)[0].sort_date
+            matched = [s for s in valid_sessions if s.sort_date == first_date]
+        else:
+            # Jika tanggal gagal diparse sama sekali, ambil row pertama
+            matched = [sessions[0]]
+
+    return sorted(matched, key=sort_key)
