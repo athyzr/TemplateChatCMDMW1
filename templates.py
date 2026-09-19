@@ -90,6 +90,7 @@ def _render_daily_header(session: ParsedSession, audience: str) -> list[str]:
         f"🌟 *D-Day: {session.materi}* 🌟",
         "",
         f"Halo, {title}! 👋✨",
+        "Persiapkan dirimu untuk kelas malam ini yaaa, berikut detail kelasnya! 👇"
         "",
         f"📆 *{session.date_str}*",
         f"⏰ *{session.time_str}*" if session.time_str else "",
@@ -99,9 +100,20 @@ def _render_daily_header(session: ParsedSession, audience: str) -> list[str]:
 
 def render_student_daily_broadcast(session: ParsedSession) -> str:
     parts = _render_daily_header(session, "student")
+    
+    # Tambahkan PG / AG jika tersedia
+    if session.pg_link:
+        parts.extend(["", f"PG: {session.pg_link}"])
+    if session.ag_link:
+        parts.extend(["", f"AG: {session.ag_link}"])
+
     pretest = session.pretest_student or session.pretest_single
     if pretest:
         parts.extend(["", f"📝 *Pre-test:* {pretest}"])
+        
+    if session.student_link:
+        parts.extend(["", f"Link: {session.student_link}"])
+
     parts.extend(
         [
             "",
@@ -118,6 +130,15 @@ def render_student_daily_broadcast(session: ParsedSession) -> str:
 
 def render_mentor_daily_broadcast(session: ParsedSession) -> str:
     parts = _render_daily_header(session, f"Kak {session.mentor_name or 'Mentor'}")
+    
+    # Tambahkan PG / AG / CM Link jika tersedia
+    if session.pg_link:
+        parts.extend(["", f"PG: {session.pg_link}"])
+    if session.ag_link:
+        parts.extend(["", f"AG: {session.ag_link}"])
+    if session.cm_link:
+        parts.extend(["", f"Link CM: {session.cm_link}"])
+
     parts.extend(
         [
             "",
