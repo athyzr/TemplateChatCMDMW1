@@ -125,7 +125,8 @@ def render_student_daily_broadcast(session: ParsedSession) -> str:
             "Terima kasih, tetap semangat, dan *see you tonight!* 👋😁",
         ]
     )
-    return "\n".join(line for line in parts if line != "").strip()
+    # Gunakan "\n".join(parts).strip() tanpa menyaring string kosong "" agar enter tetap ada
+    return "\n".join(parts).strip()
 
 
 def render_mentor_daily_broadcast(session: ParsedSession) -> str:
@@ -148,7 +149,8 @@ def render_mentor_daily_broadcast(session: ParsedSession) -> str:
             "Mohon hadir tepat waktu ya, Kak. Terima kasih 🙏",
         ]
     )
-    return "\n".join(line for line in parts if line != "").strip()
+    # Gunakan "\n".join(parts).strip() tanpa menyaring string kosong "" agar enter tetap ada
+    return "\n".join(parts).strip()
 
 
 def sessions_for_date(sessions: List[ParsedSession], target_date: datetime.date | None = None) -> List[ParsedSession]:
