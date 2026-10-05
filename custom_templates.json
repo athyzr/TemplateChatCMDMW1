@@ -1,0 +1,39 @@
+{
+  "mentor_broadcast": {
+    "greeting": "Selamat siang {mentor_name} 👋",
+    "intro": "Izin menginformasikan jadwal kelas {mentor_name} untuk pekan ini yaa, berikut detailnya :",
+    "session_format": "{session_header}\n{pg_link}\n{ag_link}\n{cm_link}\n{extra_resources}",
+    "closing": "Terima kasih banyak Mba, dan see you later ! ✨",
+    "hold_note": ""
+  },
+  "student_broadcast": {
+    "title": "📚 KELAS PEKAN INI",
+    "greeting": "Selamat siang, teman-teman! 👋",
+    "intro": "Berikut jadwal kelas dan kegiatan kita untuk pekan ini. Jangan lupa dicatat dan dipersiapkan, yaa! ✨",
+    "session_format": "{session_header}\n{pg_link}\n{ag_link}\n{pretest}\n{student_link}\n{extra_resources}",
+    "closing": "Jangan lupa disiapkan ya, teman-teman. Kalau ada pertanyaan langsung chat di sini aja 🙌"
+  },
+  "student_daily": {
+    "title": "🌟 *D-{day} : {materi}* 🌟",
+    "greeting": "Selamat siang, Student! 👋✨",
+    "intro": "Persiapkan dirimu untuk kelas malam ini yaaa, berikut detail kelasnya! 👇",
+    "date_format": "📆 *{date_str}*",
+    "time_format": "⏰ *{time_str}*",
+    "materi_format": "📖 *Materi: {materi}*",
+    "pretest_format": "📝 *Pre-test:* {pretest}",
+    "zoom_label": "💻 *Zoom:*",
+    "zoom_link": "https://zoom.us/j/94645699192?pwd=8rxbJHGvzMoY4x3tuGpQIbnsbNm5MT.1",
+    "closing": "Jangan lupa hadir tepat waktu dan siapkan diri untuk kelas hari ini yaa! 📚✨\nTerima kasih, tetap semangat, dan *see you tonight!!* 👋😁"
+  },
+  "mentor_daily": {
+    "title": "🌟 *D-{day} : {materi}* 🌟",
+    "greeting": "Selamat siang, {mentor_name}! 👋✨",
+    "intro": "Izin mengirimkan jadwal kelas DMW1 untuk malam hari ini, berikut detailnya ! 👇",
+    "date_format": "📆 *{date_str}*",
+    "time_format": "⏰ *{time_str}*",
+    "materi_format": "📖 *Materi: {materi}*",
+    "zoom_label": "💻 *Zoom:*",
+    "zoom_link": "https://zoom.us/j/94645699192?pwd=8rxbJHGvzMoY4x3tuGpQIbnsbNm5MT.1",
+    "closing": "Terimakasihh {mentor_name} dan see you later🙏"
+  }
+}

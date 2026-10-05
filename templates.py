@@ -8,9 +8,7 @@ if the table didn't say it, it doesn't appear here.
 import datetime
 from typing import List
 from parser import ParsedSession, sort_key
-
-
-ZOOM_LINK = "https://zoom.us/j/94645699192?pwd=8rxbJHGvzMoY4x3tuGpQIbnsbNm5MT.1"
+from template_manager import get_manager
 
 
 def _session_block_header(s: ParsedSession) -> str:
@@ -24,11 +22,11 @@ def _session_block_header(s: ParsedSession) -> str:
 
 def render_mentor_broadcast(mentor_name: str, status: str, sessions: List[ParsedSession], batch_name: str = "") -> str:
     sessions = sorted(sessions, key=sort_key)
-    cm_label = f" {batch_name}" if batch_name.strip() else ""
-
+    template = get_manager().get_template("mentor_broadcast")
+    
     parts = [
-        f"Halo {mentor_name} 👋",
-        f"Izin menginformasikan jadwal kelas {mentor_name} untuk pekan ini yaa, berikut detailnya :",
+        template["greeting"].format(mentor_name=mentor_name),
+        template["intro"].format(mentor_name=mentor_name),
         "",
     ]
 
@@ -45,23 +43,24 @@ def render_mentor_broadcast(mentor_name: str, status: str, sessions: List[Parsed
         parts.append("\n".join(block))
         parts.append("")
 
-    # if status == "hold":
-    #     parts.append("Status jadwal Kakak masih *hold* ya, mohon infokan kalau ada update dari sisi Kakak 🙏")
-    #     parts.append("")
+    if status == "hold" and template.get("hold_note"):
+        parts.append(template["hold_note"])
+        parts.append("")
 
-    parts.append("Terima kasih banyak, Mba! Semangat dan sampai ketemu di kelas! ✨")
+    parts.append(template["closing"])
     return "\n".join(parts).strip()
 
 
 def render_student_broadcast(sessions: List[ParsedSession], batch_name: str = "") -> str:
     sessions = sorted(sessions, key=sort_key)
+    template = get_manager().get_template("student_broadcast")
 
     parts = [
-        "📚 KELAS PEKAN INI",
-        ""
-        "Halo, teman-teman! 👋"
-        "Berikut jadwal kelas dan kegiatan kita untuk pekan ini. Jangan lupa dicatat dan dipersiapkan, yaa! ✨"
-
+        template["title"],
+        "",
+        template["greeting"],
+        template["intro"],
+        "",
     ]
 
     for s in sessions:
@@ -80,26 +79,39 @@ def render_student_broadcast(sessions: List[ParsedSession], batch_name: str = ""
         parts.append("\n".join(block))
         parts.append("")
 
-    parts.append("Jangan lupa disiapkan ya, teman-teman. Kalau ada pertanyaan langsung chat di sini aja 🙌")
+    parts.append(template["closing"])
     return "\n".join(parts).strip()
 
 
-def _render_daily_header(session: ParsedSession, audience: str) -> list[str]:
-    title = "Student" if audience == "student" else audience
-    return [
-        f"🌟 *D-Day: {session.materi}* 🌟",
+def _render_daily_header(session: ParsedSession, template: dict, mentor_name: str = "") -> list[str]:
+    # Extract day number dari format "Day 42" atau "day 42"
+    import re
+    day_match = re.search(r'day\s*(\d+)', session.day, re.IGNORECASE)
+    day_number = day_match.group(1) if day_match else session.day
+    
+    title_text = template["title"].format(day=day_number, materi=session.materi)
+    greeting = template["greeting"].format(mentor_name=mentor_name) if mentor_name else template["greeting"]
+    
+    parts = [
+        title_text,
         "",
-        f"Halo, {title}! 👋✨",
-        "Persiapkan dirimu untuk kelas malam ini yaaa, berikut detail kelasnya! 👇"
+        greeting,
+        template["intro"],
         "",
-        f"📆 *{session.date_str}*",
-        f"⏰ *{session.time_str}*" if session.time_str else "",
-        f"📖 *Materi: {session.materi}*",
+        template["date_format"].format(date_str=session.date_str),
     ]
+    
+    if session.time_str:
+        parts.append(template["time_format"].format(time_str=session.time_str))
+    
+    parts.append(template["materi_format"].format(materi=session.materi))
+    
+    return parts
 
 
 def render_student_daily_broadcast(session: ParsedSession) -> str:
-    parts = _render_daily_header(session, "student")
+    template = get_manager().get_template("student_daily")
+    parts = _render_daily_header(session, template)
     
     # Tambahkan PG / AG jika tersedia
     if session.pg_link:
@@ -109,7 +121,7 @@ def render_student_daily_broadcast(session: ParsedSession) -> str:
 
     pretest = session.pretest_student or session.pretest_single
     if pretest:
-        parts.extend(["", f"📝 *Pre-test:* {pretest}"])
+        parts.extend(["", template["pretest_format"].format(pretest=pretest)])
         
     if session.student_link:
         parts.extend(["", f"Link: {session.student_link}"])
@@ -117,20 +129,19 @@ def render_student_daily_broadcast(session: ParsedSession) -> str:
     parts.extend(
         [
             "",
-            "💻 *Zoom:*",
-            ZOOM_LINK,
+            template["zoom_label"],
+            template["zoom_link"],
             "",
-            "Jangan lupa hadir tepat waktu dan siapkan diri untuk kelas hari ini yaa! 📚✨",
-            "",
-            "Terima kasih, tetap semangat, dan *see you tonight!* 👋😁",
+            template["closing"],
         ]
     )
-    # Gunakan "\n".join(parts).strip() tanpa menyaring string kosong "" agar enter tetap ada
     return "\n".join(parts).strip()
 
 
 def render_mentor_daily_broadcast(session: ParsedSession) -> str:
-    parts = _render_daily_header(session, f"Kak {session.mentor_name or 'Mentor'}")
+    template = get_manager().get_template("mentor_daily")
+    mentor_name = session.mentor_name if session.mentor_name else "Mentor"
+    parts = _render_daily_header(session, template, mentor_name)
     
     # Tambahkan PG / AG / CM Link jika tersedia
     if session.pg_link:
@@ -143,13 +154,12 @@ def render_mentor_daily_broadcast(session: ParsedSession) -> str:
     parts.extend(
         [
             "",
-            "💻 *Zoom:*",
-            ZOOM_LINK,
+            template["zoom_label"],
+            template["zoom_link"],
             "",
-            "Mohon hadir tepat waktu ya, Kak. Terima kasih 🙏",
+            template["closing"],
         ]
     )
-    # Gunakan "\n".join(parts).strip() tanpa menyaring string kosong "" agar enter tetap ada
     return "\n".join(parts).strip()
 
 
