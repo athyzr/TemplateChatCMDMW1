@@ -98,9 +98,12 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self):
+   def do_GET(self):
         request_url = urlsplit(self.path)
-        if parse_qs(request_url.query).get("resource") == ["templates"]:
+        query_params = parse_qs(request_url.query)
+        
+        # Cek jika ada request resource=templates atau path mengandung templates
+        if query_params.get("resource") == ["templates"] or "resource=templates" in self.path:
             self._send_json(200, {
                 "templates": get_manager().templates,
                 "defaults": DEFAULT_TEMPLATES,
