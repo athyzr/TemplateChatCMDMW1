@@ -5,42 +5,149 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CM Broadcast Generator</title>
   <style>
-    :root { color-scheme: light; --ink: #17212b; --muted: #64707d; --line: #d8dee5; --accent: #1264a3; --soft: #eef6fb; }
+    :root {
+      color-scheme: light;
+      --bg: #f3ebe0;
+      --card: #fbf7f0;
+      --ink: #3a2e27;
+      --muted: #8a7766;
+      --line: #e4d7c5;
+      --accent: #b05d3b;
+      --accent-dark: #8f472b;
+      --olive: #6f7352;
+      --sand: #eadfcd;
+      --soft: #f1e8d6;
+      --shadow: 0 10px 30px -12px rgba(94, 66, 44, .28);
+      --radius: 16px;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #f5f7f9; color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
-    main { width: min(1080px, calc(100% - 32px)); margin: 34px auto 64px; }
-    header { margin-bottom: 24px; }
-    h1 { margin: 0 0 6px; font-size: clamp(26px, 4vw, 38px); }
-    h2 { margin: 34px 0 12px; font-size: 22px; }
-    p { color: var(--muted); }
-    label { display: block; margin: 14px 0 7px; font-weight: 650; }
-    textarea, input { width: 100%; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); padding: 12px; font: inherit; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; color: var(--ink); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(900px 420px at 8% -8%, rgba(176, 93, 59, .16), transparent 60%),
+        radial-gradient(760px 380px at 100% 4%, rgba(111, 115, 82, .16), transparent 60%),
+        var(--bg);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+    main { width: min(980px, calc(100% - 32px)); margin: 40px auto 72px; }
+
+    header { margin-bottom: 26px; }
+    header::before {
+      content: "✦ Broadcast Tools"; display: inline-block; margin-bottom: 12px; padding: 5px 13px;
+      border-radius: 999px; background: var(--sand); color: var(--olive); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    }
+    h1 { margin: 0 0 6px; font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: clamp(28px, 4.5vw, 42px); letter-spacing: -.01em; color: var(--ink); }
+    h2 { margin: 6px 0 12px; font-family: Georgia, serif; font-size: 24px; }
+    h3 { margin: 0 0 10px; font-size: 17px; }
+    p { color: var(--muted); margin: 0 0 8px; }
+    hr { border: 0; border-top: 1px dashed var(--line); margin: 28px 0; }
+
+    #generate-panel, #settings-panel {
+      background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 26px; box-shadow: var(--shadow);
+      animation: panelIn .35s ease both;
+    }
+    @keyframes panelIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    label { display: block; margin: 16px 0 8px; font-weight: 650; font-size: 14px; color: var(--ink); }
+    textarea, input, select {
+      width: 100%; border: 1.5px solid var(--line); border-radius: 12px; background: #fffdf9; color: var(--ink);
+      padding: 12px 14px; font: inherit; transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    textarea::placeholder, input::placeholder { color: #b7a794; }
+    textarea:hover, input:hover, select:hover { border-color: #d3bfa5; }
+    textarea:focus, input:focus, select:focus, summary:focus-visible, button:focus-visible {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(176, 93, 59, .18);
+    }
     #raw-table { min-height: 220px; resize: vertical; }
     input { max-width: 480px; }
-    button { border: 0; border-radius: 7px; padding: 11px 17px; background: var(--accent); color: white; cursor: pointer; font: inherit; font-weight: 700; }
-    button:disabled { opacity: .55; cursor: wait; }
-    .tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); margin: 20px 0; }
-    .tab { border-radius: 6px 6px 0 0; background: transparent; color: var(--muted); border-bottom: 3px solid transparent; }
-    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .generate { margin-top: 16px; }
-    .notice { margin-top: 16px; padding: 12px 14px; border-radius: 7px; background: var(--soft); color: #24516d; }
-    .error { background: #fff0f0; color: #a32626; }
-    .result { position: relative; margin: 10px 0 18px; }
-    .result textarea { min-height: 230px; padding-right: 52px; resize: vertical; }
-    .copy { position: absolute; top: 8px; right: 8px; padding: 7px 9px; background: white; color: var(--ink); border: 1px solid var(--line); font-size: 17px; }
-    .copy:hover { background: #eef2f5; }
-    .meta { margin: 0 0 6px; color: var(--muted); font-size: 13px; }
-    .template-controls { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
-    select { min-width: min(360px, 100%); border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); padding: 11px 12px; font: inherit; }
-    .template-field { margin: 16px 0; }
-    .template-field label { margin-top: 0; }
-    .template-field textarea { min-height: 74px; resize: vertical; }
-    .template-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
-    .secondary { background: #e8edf1; color: var(--ink); }
+
+    button {
+      border: 0; border-radius: 12px; padding: 12px 20px; color: #fff7ee; cursor: pointer; font: inherit; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      box-shadow: 0 8px 18px -8px rgba(143, 71, 43, .65);
+      transition: transform .15s ease, box-shadow .2s ease, filter .2s ease, background .2s;
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 12px 22px -8px rgba(143, 71, 43, .7); filter: brightness(1.05); }
+    button:active { transform: translateY(0) scale(.98); }
+    button:disabled { opacity: .7; cursor: wait; transform: none; animation: pulse 1.1s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .45; } }
+
+    .tabs {
+      display: inline-flex; gap: 4px; padding: 5px; margin: 0 0 20px; border: 1px solid var(--line);
+      border-radius: 999px; background: var(--sand);
+    }
+    .tab {
+      border-radius: 999px; padding: 9px 18px; background: transparent; color: var(--muted); box-shadow: none; font-size: 14px;
+    }
+    .tab:hover { background: rgba(255, 255, 255, .55); color: var(--ink); transform: none; box-shadow: none; filter: none; }
+    .tab.active { background: #fffdf9; color: var(--accent-dark); box-shadow: 0 3px 10px -4px rgba(94, 66, 44, .4); }
+
+    .generate { margin-top: 20px; }
+
+    .notice {
+      margin-top: 18px; padding: 13px 16px; border-radius: 12px; background: #eef0e2; color: #4b5033;
+      border-left: 4px solid var(--olive); animation: slideIn .3s ease both;
+    }
+    .error { background: #f8e3dc; color: #8a2f1c; border-left-color: #c0492b; }
     .notice ul { margin: 6px 0 0; padding-left: 22px; }
-    .result-group { margin-top: 22px; }
-    .result-group h3 { margin-bottom: 8px; }
-    .hidden { display: none; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+
+    #results { margin-top: 12px; animation: panelIn .4s ease both; }
+    #warnings p {
+      display: block; margin: 0 0 8px; padding: 9px 13px; border-radius: 10px; background: #f6ead2; color: #7a5a1f; font-size: 14px;
+    }
+
+    .result-group { margin-top: 26px; animation: panelIn .45s ease both; }
+    .result-group:nth-child(2) { animation-delay: .06s; }
+    .result-group:nth-child(3) { animation-delay: .12s; }
+    .result-group:nth-child(4) { animation-delay: .18s; }
+    .result-group h3 { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+    .result-group h3::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(176, 93, 59, .18); }
+
+    .result { position: relative; margin: 10px 0 18px; }
+    .result textarea { min-height: 230px; padding-right: 60px; resize: vertical; background: #fffdf9; line-height: 1.6; }
+    .result:hover textarea { border-color: #d3bfa5; box-shadow: 0 8px 20px -14px rgba(94, 66, 44, .5); }
+    button.copy {
+      position: absolute; top: 12px; right: 12px; padding: 7px 10px; background: var(--sand); color: var(--ink);
+      border: 1px solid var(--line); font-size: 17px; box-shadow: none; border-radius: 10px;
+    }
+    button.copy:hover { background: #fffdf9; border-color: var(--accent); transform: scale(1.08); box-shadow: 0 6px 14px -6px rgba(94, 66, 44, .5); }
+    .meta { margin: 0 0 6px; color: var(--olive); font-size: 13px; font-weight: 650; letter-spacing: .02em; }
+
+    .template-controls { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+    select {
+      min-width: min(360px, 100%); width: auto; padding-right: 36px; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238a7766' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+    }
+    details { margin: 16px 0 4px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); }
+    summary { cursor: pointer; font-weight: 650; color: var(--olive); border-radius: 6px; }
+    details[open] summary { margin-bottom: 8px; }
+    details ul { margin: 6px 0 0; padding-left: 22px; color: var(--ink); }
+    details li { margin: 3px 0; }
+
+    .template-field { margin: 18px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fffdf9; transition: box-shadow .2s, border-color .2s; }
+    .template-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(176, 93, 59, .12); }
+    .template-field label { margin: 0 0 8px; color: var(--accent-dark); font-size: 13px; letter-spacing: .03em; text-transform: uppercase; }
+    .template-field textarea { min-height: 74px; resize: vertical; border: 1px solid transparent; background: var(--bg); }
+    .template-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
+    button.secondary, .secondary { background: var(--sand); color: var(--ink); box-shadow: none; border: 1px solid var(--line); }
+    button.secondary:hover { background: #e2d3bb; box-shadow: 0 8px 16px -10px rgba(94, 66, 44, .6); filter: none; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 600px) {
+      main { margin-top: 24px; }
+      #generate-panel, #settings-panel { padding: 18px; border-radius: 18px; }
+      .tabs { display: flex; width: 100%; }
+      .tab { flex: 1; padding: 9px 8px; font-size: 13px; }
+      button.generate, .template-actions button { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -167,7 +274,7 @@
     }
 
     async function loadTemplates() {
-      const response = await fetch('/api/templates');
+      const response = await fetch('/api?resource=templates');
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Template tidak dapat dimuat.');
       defaults = data.defaults;
@@ -295,10 +402,8 @@
       generate.disabled = true;
       showStatus('Sedang membuat broadcast...');
       try {
-        const settingsLoaded = await templatesReady;
-        const payload = { raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value };
-        if (settingsLoaded) payload.templates = templates;
-        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!(await templatesReady)) throw new Error('Template settings tidak dapat dimuat.');
+        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value, templates }) });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Input belum dapat diproses.');
         list.replaceChildren();
