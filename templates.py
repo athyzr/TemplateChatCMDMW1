@@ -20,9 +20,15 @@ def _session_block_header(s: ParsedSession) -> str:
     return "\n".join(lines)
 
 
-def render_mentor_broadcast(mentor_name: str, status: str, sessions: List[ParsedSession], batch_name: str = "") -> str:
+def render_mentor_broadcast(
+    mentor_name: str,
+    status: str,
+    sessions: List[ParsedSession],
+    batch_name: str = "",
+    template_manager=None,
+) -> str:
     sessions = sorted(sessions, key=sort_key)
-    template = get_manager().get_template("mentor_broadcast")
+    template = (template_manager or get_manager()).get_template("mentor_broadcast")
     
     parts = [
         template["greeting"].format(mentor_name=mentor_name),
@@ -51,9 +57,11 @@ def render_mentor_broadcast(mentor_name: str, status: str, sessions: List[Parsed
     return "\n".join(parts).strip()
 
 
-def render_student_broadcast(sessions: List[ParsedSession], batch_name: str = "") -> str:
+def render_student_broadcast(
+    sessions: List[ParsedSession], batch_name: str = "", template_manager=None
+) -> str:
     sessions = sorted(sessions, key=sort_key)
-    template = get_manager().get_template("student_broadcast")
+    template = (template_manager or get_manager()).get_template("student_broadcast")
 
     parts = [
         template["title"],
@@ -109,8 +117,8 @@ def _render_daily_header(session: ParsedSession, template: dict, mentor_name: st
     return parts
 
 
-def render_student_daily_broadcast(session: ParsedSession) -> str:
-    template = get_manager().get_template("student_daily")
+def render_student_daily_broadcast(session: ParsedSession, template_manager=None) -> str:
+    template = (template_manager or get_manager()).get_template("student_daily")
     parts = _render_daily_header(session, template)
     
     # Tambahkan PG / AG jika tersedia
@@ -138,8 +146,8 @@ def render_student_daily_broadcast(session: ParsedSession) -> str:
     return "\n".join(parts).strip()
 
 
-def render_mentor_daily_broadcast(session: ParsedSession) -> str:
-    template = get_manager().get_template("mentor_daily")
+def render_mentor_daily_broadcast(session: ParsedSession, template_manager=None) -> str:
+    template = (template_manager or get_manager()).get_template("mentor_daily")
     mentor_name = session.mentor_name if session.mentor_name else "Mentor"
     parts = _render_daily_header(session, template, mentor_name)
     

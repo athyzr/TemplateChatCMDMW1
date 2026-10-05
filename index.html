@@ -19,6 +19,9 @@
     input { max-width: 480px; }
     button { border: 0; border-radius: 7px; padding: 11px 17px; background: var(--accent); color: white; cursor: pointer; font: inherit; font-weight: 700; }
     button:disabled { opacity: .55; cursor: wait; }
+    .tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); margin: 20px 0; }
+    .tab { border-radius: 6px 6px 0 0; background: transparent; color: var(--muted); border-bottom: 3px solid transparent; }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .generate { margin-top: 16px; }
     .notice { margin-top: 16px; padding: 12px 14px; border-radius: 7px; background: var(--soft); color: #24516d; }
     .error { background: #fff0f0; color: #a32626; }
@@ -27,6 +30,16 @@
     .copy { position: absolute; top: 8px; right: 8px; padding: 7px 9px; background: white; color: var(--ink); border: 1px solid var(--line); font-size: 17px; }
     .copy:hover { background: #eef2f5; }
     .meta { margin: 0 0 6px; color: var(--muted); font-size: 13px; }
+    .template-controls { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+    select { min-width: min(360px, 100%); border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); padding: 11px 12px; font: inherit; }
+    .template-field { margin: 16px 0; }
+    .template-field label { margin-top: 0; }
+    .template-field textarea { min-height: 74px; resize: vertical; }
+    .template-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
+    .secondary { background: #e8edf1; color: var(--ink); }
+    .notice ul { margin: 6px 0 0; padding-left: 22px; }
+    .result-group { margin-top: 22px; }
+    .result-group h3 { margin-bottom: 8px; }
     .hidden { display: none; }
   </style>
 </head>
@@ -34,21 +47,59 @@
   <main>
     <header>
       <h1>CM Broadcast Generator</h1>
-      <p>Paste tabel jadwal, generate broadcast, lalu copy dengan satu klik.</p>
+      <p>Paste jadwal kelas untuk membuat broadcast mentor dan student.</p>
     </header>
-    <section>
+    <nav class="tabs" role="tablist" aria-label="Bagian aplikasi">
+      <button class="tab active" id="generate-tab" role="tab" aria-selected="true" aria-controls="generate-panel">Generate Broadcast</button>
+      <button class="tab" id="settings-tab" role="tab" aria-selected="false" aria-controls="settings-panel">Template Settings</button>
+    </nav>
+    <section id="generate-panel" role="tabpanel" aria-labelledby="generate-tab">
       <label for="raw-table">Tabel jadwal pekan ini</label>
       <textarea id="raw-table" placeholder="Paste tabel dari Google Sheets, Excel, atau Markdown..."></textarea>
-      <label for="batch-name">Nama kelas/batch (opsional)</label>
+      <label for="batch-name">Nama kelas/batch (opsional, untuk kalimat pembuka mentor)</label>
       <input id="batch-name" placeholder="mis. Digital Marketing Wave 1">
       <button class="generate" id="generate">Generate Broadcast</button>
-      <div id="status" class="notice hidden"></div>
+      <div id="status" class="notice hidden" role="status" aria-live="polite"></div>
+      <section id="results" class="hidden">
+        <h2>Hasil Broadcast</h2>
+        <div id="warnings"></div>
+        <div id="broadcast-list"></div>
+        <div class="result-group">
+          <h3>Copy All</h3>
+          <div id="all-result"></div>
+        </div>
+      </section>
     </section>
-    <section id="results" class="hidden">
-      <h2>Hasil Broadcast</h2>
-      <div id="broadcast-list"></div>
-      <h2>Copy All</h2>
-      <div id="all-result"></div>
+    <section id="settings-panel" class="hidden" role="tabpanel" aria-labelledby="settings-tab">
+      <h2>Template Settings</h2>
+      <p>Edit template broadcast sesuai kebutuhan. Gunakan {variable} untuk placeholder dinamis.</p>
+      <div class="template-controls">
+        <div>
+          <label for="template-type">Pilih Template</label>
+          <select id="template-type">
+            <option value="mentor_broadcast">Mentor Broadcast (Pekan Ini)</option>
+            <option value="student_broadcast">Student Broadcast (Pekan Ini)</option>
+            <option value="student_daily">Student Daily (Hari Ini)</option>
+            <option value="mentor_daily">Mentor Daily (Hari Ini)</option>
+          </select>
+        </div>
+      </div>
+      <details>
+        <summary>Variable yang tersedia</summary>
+        <div id="variable-help"></div>
+      </details>
+      <form id="template-form">
+        <div id="template-fields"></div>
+        <div class="template-actions">
+          <button type="submit">Simpan</button>
+          <button type="button" class="secondary" id="reset-template">Reset ke Default</button>
+        </div>
+      </form>
+      <hr>
+      <h3>Reset Semua Template</h3>
+      <p>Mengembalikan semua template ke pengaturan default.</p>
+      <button type="button" class="secondary" id="reset-all">Reset Semua ke Default</button>
+      <div id="template-status" class="notice hidden" role="status" aria-live="polite"></div>
     </section>
   </main>
   <script>
@@ -57,6 +108,83 @@
     const results = document.querySelector('#results');
     const list = document.querySelector('#broadcast-list');
     const allResult = document.querySelector('#all-result');
+    const warnings = document.querySelector('#warnings');
+    const templateType = document.querySelector('#template-type');
+    const templateFields = document.querySelector('#template-fields');
+    const variableHelp = document.querySelector('#variable-help');
+    const templateStatus = document.querySelector('#template-status');
+    const templateLabels = {
+      mentor_broadcast: 'Mentor Broadcast (Pekan Ini)',
+      student_broadcast: 'Student Broadcast (Pekan Ini)',
+      student_daily: 'Student Daily (Hari Ini)',
+      mentor_daily: 'Mentor Daily (Hari Ini)'
+    };
+    const variableDescriptions = {
+      mentor_broadcast: ['{mentor_name} - Nama mentor', '{session_header} - Header session (hari, materi, tanggal, waktu)', '{pg_link}, {ag_link}, {cm_link} - Link otomatis', '{extra_resources} - Resource tambahan dari tabel'],
+      student_broadcast: ['{session_header} - Header session (hari, materi, tanggal, waktu)', '{pg_link}, {ag_link} - Link otomatis', '{pretest} - Link pretest', '{student_link} - Link student', '{extra_resources} - Resource tambahan dari tabel'],
+      student_daily: ['{materi} - Nama materi', '{day} - Nomor hari (dari "Day 42" jadi "42")', '{date_str} - Tanggal', '{time_str} - Waktu', '{pretest} - Link pretest'],
+      mentor_daily: ['{materi} - Nama materi', '{day} - Nomor hari (dari "Day 42" jadi "42")', '{date_str} - Tanggal', '{time_str} - Waktu', '{mentor_name} - Nama mentor']
+    };
+    let templates = {};
+    let defaults = {};
+
+    function showTemplateStatus(message, error = false) {
+      templateStatus.textContent = message;
+      templateStatus.classList.toggle('error', error);
+      templateStatus.classList.remove('hidden');
+    }
+
+    function persistTemplates(nextTemplates) {
+      localStorage.setItem('cm-broadcast-templates', JSON.stringify(nextTemplates));
+      templates = nextTemplates;
+    }
+
+    function loadTemplateEditor() {
+      const name = templateType.value;
+      const current = templates[name] || {};
+      templateFields.replaceChildren();
+      Object.entries(current).forEach(([key, value]) => {
+        const field = document.createElement('div');
+        field.className = 'template-field';
+        const label = document.createElement('label');
+        label.textContent = key;
+        label.htmlFor = `template-${key}`;
+        const input = document.createElement('textarea');
+        input.id = `template-${key}`;
+        input.name = key;
+        input.value = value;
+        field.append(label, input);
+        templateFields.append(field);
+      });
+      variableHelp.replaceChildren();
+      const list = document.createElement('ul');
+      (variableDescriptions[name] || []).forEach(description => {
+        const item = document.createElement('li');
+        item.textContent = description;
+        list.append(item);
+      });
+      variableHelp.append(list);
+    }
+
+    async function loadTemplates() {
+      const response = await fetch('/api?resource=templates');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Template tidak dapat dimuat.');
+      defaults = data.defaults;
+      templates = data.templates;
+      try {
+        const saved = JSON.parse(localStorage.getItem('cm-broadcast-templates') || '{}');
+        Object.keys(defaults).forEach(name => {
+          if (!saved[name] || typeof saved[name] !== 'object') return;
+          Object.keys(defaults[name]).forEach(key => {
+            if (typeof saved[name][key] === 'string') templates[name][key] = saved[name][key];
+          });
+        });
+      } catch (error) {
+        localStorage.removeItem('cm-broadcast-templates');
+      }
+      loadTemplateEditor();
+    }
 
     function showStatus(message, error = false) {
       status.textContent = message;
@@ -79,7 +207,12 @@
       copy.setAttribute('aria-label', 'Copy ke clipboard');
       copy.textContent = '📋';
       copy.onclick = async () => {
-        await navigator.clipboard.writeText(text);
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (error) {
+          textarea.select();
+          document.execCommand('copy');
+        }
         copy.textContent = '✓';
         setTimeout(() => copy.textContent = '📋', 1200);
       };
@@ -87,17 +220,107 @@
       return wrapper;
     }
 
+    function appendGroup(title, items, emptyMessage) {
+      const group = document.createElement('div');
+      group.className = 'result-group';
+      const heading = document.createElement('h3');
+      heading.textContent = title;
+      group.append(heading);
+      if (items.length) {
+        items.forEach(item => group.append(makeCopyBox(item.text, item.title)));
+      } else if (emptyMessage) {
+        const message = document.createElement('p');
+        message.textContent = emptyMessage;
+        group.append(message);
+      }
+      list.append(group);
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = () => {
+        const settings = tab.id === 'settings-tab';
+        document.querySelector('#generate-tab').classList.toggle('active', !settings);
+        document.querySelector('#settings-tab').classList.toggle('active', settings);
+        document.querySelector('#generate-tab').setAttribute('aria-selected', String(!settings));
+        document.querySelector('#settings-tab').setAttribute('aria-selected', String(settings));
+        document.querySelector('#generate-panel').classList.toggle('hidden', settings);
+        document.querySelector('#settings-panel').classList.toggle('hidden', !settings);
+      };
+    });
+
+    templateType.onchange = loadTemplateEditor;
+    document.querySelector('#template-form').onsubmit = event => {
+      event.preventDefault();
+      const name = templateType.value;
+      const edited = Object.fromEntries(new FormData(event.currentTarget).entries());
+      const next = { ...templates, [name]: { ...templates[name], ...edited } };
+      try {
+        persistTemplates(next);
+        showTemplateStatus(`Template ${templateLabels[name]} berhasil disimpan.`);
+      } catch (error) {
+        showTemplateStatus(`Gagal menyimpan template: ${error.message}`, true);
+      }
+    };
+
+    document.querySelector('#reset-template').onclick = () => {
+      const name = templateType.value;
+      const next = { ...templates, [name]: { ...defaults[name] } };
+      try {
+        persistTemplates(next);
+        loadTemplateEditor();
+        showTemplateStatus(`Template ${templateLabels[name]} berhasil direset ke default.`);
+      } catch (error) {
+        showTemplateStatus(`Gagal reset template: ${error.message}`, true);
+      }
+    };
+
+    document.querySelector('#reset-all').onclick = () => {
+      if (!window.confirm('Yakin ingin reset semua template? Perubahan tidak dapat dibatalkan!')) return;
+      const next = JSON.parse(JSON.stringify(defaults));
+      try {
+        persistTemplates(next);
+        loadTemplateEditor();
+        showTemplateStatus('Semua template berhasil direset ke default.');
+      } catch (error) {
+        showTemplateStatus(`Gagal reset semua template: ${error.message}`, true);
+      }
+    };
+
+    const templatesReady = loadTemplates().catch(error => {
+      showTemplateStatus(`Gagal memuat template: ${error.message}`, true);
+      return false;
+    });
+
     generate.onclick = async () => {
       generate.disabled = true;
       showStatus('Sedang membuat broadcast...');
       try {
-        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value }) });
+        if (!(await templatesReady)) throw new Error('Template settings tidak dapat dimuat.');
+        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value, templates }) });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Input belum dapat diproses.');
         list.replaceChildren();
-        const all = [];
-        data.broadcasts.forEach(item => { list.append(makeCopyBox(item.text, `${item.type} • ${item.title}`)); all.push(item.text); });
-        allResult.replaceChildren(makeCopyBox(all.join('\n\n---\n\n'), 'Semua broadcast'));
+        warnings.replaceChildren();
+        data.warnings.forEach(warning => {
+          const warningLine = document.createElement('p');
+          warningLine.textContent = warning;
+          warnings.append(warningLine);
+        });
+        const mentorWeekly = data.broadcasts.filter(item => item.type === 'Mentor - Pekan Ini');
+        const studentWeekly = data.broadcasts.filter(item => item.type === 'Student - Pekan Ini');
+        const studentDaily = data.broadcasts.filter(item => item.type === 'Student - Hari Ini');
+        const mentorDaily = data.broadcasts.filter(item => item.type === 'Mentor - Hari Ini');
+        const unassignedCount = data.sessions.filter(session => !session.mentor_name).length;
+        if (unassignedCount) {
+          const note = document.createElement('p');
+          note.textContent = `ℹ️ ${unassignedCount} session tanpa mentor (tidak masuk broadcast mentor).`;
+          warnings.append(note);
+        }
+        appendGroup('Mentor Broadcast', mentorWeekly.map(item => ({ ...item, title: item.title + (item.status === 'hold' ? ' • 🟡 HOLD' : '') })), 'Tidak ada session dengan mentor terisi pada tabel ini.');
+        appendGroup('Student Broadcast', studentWeekly);
+        appendGroup('Student - Hari Ini', studentDaily, 'Tidak ada jadwal student untuk hari ini.');
+        appendGroup('Mentor - Hari Ini', mentorDaily, 'Tidak ada mentor terisi untuk kelas hari ini.');
+        allResult.replaceChildren(makeCopyBox(data.broadcasts.map(item => item.text).join('\n\n---\n\n'), 'Semua broadcast'));
         results.classList.remove('hidden');
         showStatus(`${data.broadcasts.length} broadcast berhasil dibuat.`);
       } catch (error) { showStatus(error.message, true); }

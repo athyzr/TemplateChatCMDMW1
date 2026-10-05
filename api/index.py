@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from http.server import BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlsplit
 
 # Tambahkan direktori root ke path agar modul lokal terbaca
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -15,6 +16,7 @@ from templates import (
     render_student_daily_broadcast,
     sessions_for_date,
 )
+from template_manager import DEFAULT_TEMPLATES, TemplateManager, get_manager
 
 
 def session_to_dict(session):
@@ -31,6 +33,19 @@ def session_to_dict(session):
 def generate_broadcasts(payload):
     sessions, warnings = parse_input(payload.get("raw_table", ""))
     batch_name = payload.get("batch_name", "")
+    template_manager = TemplateManager()
+    overrides = payload.get("templates", {})
+    if isinstance(overrides, dict):
+        for template_name, fields in overrides.items():
+            if template_name not in DEFAULT_TEMPLATES or not isinstance(fields, dict):
+                continue
+            template = template_manager.get_template(template_name).copy()
+            for field_name in template:
+                value = fields.get(field_name)
+                if isinstance(value, str):
+                    template[field_name] = value
+            template_manager.templates[template_name] = template
+
     order, groups = group_by_mentor(sessions)
 
     broadcasts = []
@@ -39,13 +54,16 @@ def generate_broadcasts(payload):
         broadcasts.append({
             "type": "Mentor - Pekan Ini",
             "title": mentor_name,
-            "text": render_mentor_broadcast(mentor_name, status, mentor_sessions, batch_name),
+            "status": status,
+            "text": render_mentor_broadcast(
+                mentor_name, status, mentor_sessions, batch_name, template_manager
+            ),
         })
 
     broadcasts.append({
         "type": "Student - Pekan Ini",
         "title": "Jadwal Student",
-        "text": render_student_broadcast(sessions, batch_name),
+        "text": render_student_broadcast(sessions, batch_name, template_manager),
     })
 
     today_sessions = sessions_for_date(sessions)
@@ -53,13 +71,14 @@ def generate_broadcasts(payload):
         broadcasts.append({
             "type": "Student - Hari Ini",
             "title": session.materi,
-            "text": render_student_daily_broadcast(session),
+            "text": render_student_daily_broadcast(session, template_manager),
         })
+    for session in today_sessions:
         if session.mentor_name:
             broadcasts.append({
                 "type": "Mentor - Hari Ini",
                 "title": session.mentor_name,
-                "text": render_mentor_daily_broadcast(session),
+                "text": render_mentor_daily_broadcast(session, template_manager),
             })
 
     return {
@@ -80,6 +99,14 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        request_url = urlsplit(self.path)
+        if parse_qs(request_url.query).get("resource") == ["templates"]:
+            self._send_json(200, {
+                "templates": get_manager().templates,
+                "defaults": DEFAULT_TEMPLATES,
+            })
+            return
+
         # Menyajikan index.html saat web dibuka via browser
         html_path = os.path.join(BASE_DIR, "index.html")
         if os.path.exists(html_path):
