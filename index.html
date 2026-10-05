@@ -274,9 +274,23 @@
     }
 
     async function loadTemplates() {
-      const response = await fetch('/api?resource=templates');
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Template tidak dapat dimuat.');
+      let data;
+      let lastError;
+      for (const endpoint of ['/api/templates', '/api?resource=templates']) {
+        try {
+          const response = await fetch(endpoint);
+          if (!response.ok) throw new Error(`Endpoint template mengembalikan status ${response.status}.`);
+          const responseData = await response.json();
+          if (!responseData.templates || !responseData.defaults) {
+            throw new Error('Respons endpoint template tidak lengkap.');
+          }
+          data = responseData;
+          break;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (!data) throw lastError || new Error('Template tidak dapat dimuat.');
       defaults = data.defaults;
       templates = data.templates;
       try {
@@ -402,8 +416,10 @@
       generate.disabled = true;
       showStatus('Sedang membuat broadcast...');
       try {
-        if (!(await templatesReady)) throw new Error('Template settings tidak dapat dimuat.');
-        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value, templates }) });
+        const settingsLoaded = await templatesReady;
+        const payload = { raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value };
+        if (settingsLoaded) payload.templates = templates;
+        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Input belum dapat diproses.');
         list.replaceChildren();
