@@ -103,7 +103,10 @@ class handler(BaseHTTPRequestHandler):
         query_params = parse_qs(request_url.query)
         
         # Cek jika ada request resource=templates atau path mengandung templates
-        if query_params.get("resource") == ["templates"] or "resource=templates" in self.path:
+        if (
+            query_params.get("resource") == ["templates"]
+            or request_url.path.rstrip("/") == "/api/templates"
+        ):
             self._send_json(200, {
                 "templates": get_manager().templates,
                 "defaults": DEFAULT_TEMPLATES,

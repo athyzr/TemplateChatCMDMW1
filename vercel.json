@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/api/templates",
+      "destination": "/api/index.py?resource=templates"
+    },
+    {
       "source": "/api",
       "destination": "/api/index.py"
     },

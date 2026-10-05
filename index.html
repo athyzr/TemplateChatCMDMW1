@@ -167,7 +167,7 @@
     }
 
     async function loadTemplates() {
-      const response = await fetch('/api?resource=templates');
+      const response = await fetch('/api/templates');
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Template tidak dapat dimuat.');
       defaults = data.defaults;
@@ -295,8 +295,10 @@
       generate.disabled = true;
       showStatus('Sedang membuat broadcast...');
       try {
-        if (!(await templatesReady)) throw new Error('Template settings tidak dapat dimuat.');
-        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value, templates }) });
+        const settingsLoaded = await templatesReady;
+        const payload = { raw_table: document.querySelector('#raw-table').value, batch_name: document.querySelector('#batch-name').value };
+        if (settingsLoaded) payload.templates = templates;
+        const response = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Input belum dapat diproses.');
         list.replaceChildren();
