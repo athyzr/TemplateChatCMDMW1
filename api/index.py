@@ -98,7 +98,7 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-   def do_GET(self):
+    def do_GET(self):
         request_url = urlsplit(self.path)
         query_params = parse_qs(request_url.query)
         
@@ -139,3 +139,6 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
+
+
+# app = handler
